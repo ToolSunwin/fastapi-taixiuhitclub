@@ -2,20 +2,30 @@ import requests
 import random
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
+
+# ✅ Bật CORS để client (HTML, JS) truy cập được
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Có thể giới hạn domain cụ thể nếu cần
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 API_URL = "https://apihitclub.up.railway.app/api/history"
 
 # ------------------- Lấy dữ liệu -------------------
 def fetch_data():
     try:
-        res = requests.get(API_URL)
+        res = requests.get(API_URL, timeout=5)  # ✅ thêm timeout 5 giây
         res.raise_for_status()
         data = res.json()
         return data.get("taixiu", [])
     except Exception as e:
-        print("❌ Lỗi khi lấy dữ liệu:", e)
+        print("❌ Lỗi khi lấy dữ liệu từ API nguồn:", e)
         return []
 
 # ------------------- Dự đoán theo mẹo -------------------
@@ -24,7 +34,8 @@ def du_doan_theo_meo(record):
         tong = record["Tong"]
         x1 = record["Xuc_xac_1"]
         return "Tài" if (tong + x1) % 2 == 0 else "Xỉu"
-    except:
+    except Exception as e:
+        print("❌ Lỗi trong hàm dự đoán:", e)
         return "Không xác định"
 
 # ------------------- API Trang chủ -------------------
@@ -39,9 +50,9 @@ def taixiu_hitclub():
     if not data:
         return JSONResponse(content={"error": "Không có dữ liệu."}, status_code=400)
 
-    phien = data[0]  # phiên mới nhất
-
     try:
+        phien = data[0]  # phiên mới nhất
+
         session = phien["Phien"]
         dice_1 = phien["Xuc_xac_1"]
         dice_2 = phien["Xuc_xac_2"]
@@ -65,4 +76,5 @@ def taixiu_hitclub():
             "Admin_2": "MR SIMON"
         }
     except Exception as e:
+        print("❌ Lỗi xử lý dữ liệu:", e)
         return JSONResponse(content={"error": f"Lỗi xử lý dữ liệu: {e}"}, status_code=500)
